@@ -1,0 +1,44 @@
+- name: Configure Nagios server
+  hosts: master
+  sudo: true
+  vars:
+      nagios_slaves_config_dir: /etc/nagios/servers
+      nagios_config_file: /etc/nagios/nagios.cfg
+  tasks:
+    - name: install packages
+      yum: name={{ item }} state=present
+      with_items:
+        - nagios
+        - nagios-plugins-all
+        - nagios-plugins-nrpe
+        - nrpe
+        - php
+        - httpd
+        
+    - name: create slave config dir
+      file: dest={{ nagios_slaves_config_dir }} state=directory
+      
+    - name: add line to nagios config
+      lineinfile: dest={{ nagios_config_file }} line="cfg_dir={{ nagios_slaves_config_dir }}"
+        
+    - name: create slave config
+      file: dest="{{ nagios_slaves_config_dir }}/{{ item }}.cfg" state=touch
+      with_items: groups['slaves']
+      
+    - name: start services
+      service: name={{ item }} state=started enabled=yes
+      with_items:
+          - nagios
+          - httpd
+      
+    - name: Apache | add apache iptable rule
+      command: /sbin/iptables -I INPUT 1 -p tcp --dport http -j ACCEPT -m comment --comment "Apache"
+      
+    - name: copy slaves config
+      template: src=../templates/guest.cfg.j2 dest={{ nagios_slaves_config_dir }}/{{ item }}.cfg owner=root mode=0644
+      with_items: groups['slaves']
+      notify: restart nagios
+      
+  handlers:
+   - name: restart nagios
+     service: name=nagios state=restarted

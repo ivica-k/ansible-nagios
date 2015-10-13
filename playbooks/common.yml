@@ -1,0 +1,9 @@
+- name: Common tasks
+  hosts: all
+  sudo: true
+  tasks:
+    - name: install common packages
+      yum: name={{ item }} state=present
+      with_items:
+        - epel-release
+        - libselinux-python

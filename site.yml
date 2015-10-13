@@ -1,0 +1,4 @@
+---
+- include: playbooks/common.yml
+- include: playbooks/master.yml
+- include: playbooks/slave.yml
